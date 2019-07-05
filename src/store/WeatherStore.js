@@ -1,7 +1,6 @@
 import { observable } from 'mobx';
 
 class WeatherStore{
-    @observable data = []
     @observable isLoading = false
 }
 

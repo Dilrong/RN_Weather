@@ -1,9 +1,21 @@
 import React, {Component} from 'react';
-import {StyleSheet, View, Text, ActivityIndicator} from 'react-native';
+import {StyleSheet, View, Text, Button, ActivityIndicator} from 'react-native';
 import {createStackNavigator, createAppContainer} from 'react-navigation';
 import {inject, observer} from 'mobx-react';
 import Axios from 'axios';
 import API from '../api/api';
+import Realm from 'realm';
+import { isForInStatement } from '@babel/types';
+
+const realm = new Realm({
+    schema: [{name: 'weather', 
+    primaryKey: 'id',
+    properties: {
+        id: 'int',
+        main: 'string',
+        description: 'string',
+    }}]
+});
 
 @inject('weahterStore')
 @observer
@@ -13,14 +25,20 @@ class HomeScreen extends Component{
     }
 
     componentDidMount(){
-        this.getWeatherData()
+        getWeatherData();
     }
 
     getWeatherData(){
         this.props.weahterStore.isLoading = true
         Axios.get(API)
         .then((req) => {
-            this.props.weahterStore.data = req.data
+            realm.write(() => {
+                realm.create('weather', {
+                    id: 1,
+                    main: req.data.weather[0].main, 
+                    description: req.data.weather[0].description,
+                },true);
+            });
             this.props.weahterStore.isLoading = false
         })
         .catch((err) => {
@@ -30,10 +48,16 @@ class HomeScreen extends Component{
     }
 
     render(){
+        let weatherData = realm.objects('weather');
         return (
             <View style={styles.container}>
                 {this.props.weahterStore.isLoading? (<ActivityIndicator style={styles.loader} size="large" color="#0000ff" />):(<View/>)}
-                <Text>{this.props.weahterStore.data}</Text>
+                <Text>Today is {weatherData[0].main}</Text>
+                <Text>{weatherData[0].description}</Text>
+                <Button 
+                    title="새로고침"
+                    onPress={this.getWeatherData()}
+                ></Button>
             </View>
         )
     }
