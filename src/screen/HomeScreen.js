@@ -12,6 +12,8 @@ const realm = new Realm({
         id: 'int',
         main: 'string',
         description: 'string',
+        temp: 'int',
+        humidity: 'int'
     }}]
 });
 
@@ -20,25 +22,39 @@ const realm = new Realm({
 export default class HomeScreen extends Component{
     constructor(props){
         super(props);
+        this.getWeatherData();
     }
 
-    componentDidMount(){
-        if(!(realm.objects('weather').length)){
-            this.getWeatherData();
-        }
-    }
-
-    getWeatherData = async () => {
-        this.props.weahterStore.changeToLoading(true)
-        await Axios.get(API)
-        .then((req) => {
+    initRealm(req){
+        let weatherData = realm.objects('weather')
+        if(weatherData.length === 0){
             realm.write(() => {
                 realm.create('weather', {
                     id: 1,
                     main: req.data.weather[0].main, 
                     description: req.data.weather[0].description,
-                },true);
+                    temp: req.data.main.temp,
+                    humidity: req.data.main.humidity
+                });
             });
+        }else{
+            realm.write(() => {
+                realm.create('weather', {
+                    id: 1,
+                    main: req.data.weather[0].main, 
+                    description: req.data.weather[0].description,
+                    temp: req.data.main.temp,
+                    humidity: req.data.main.humidity
+                }, true);
+            });
+        }
+    }
+
+    getWeatherData = async() => {
+        this.props.weahterStore.changeToLoading(true)
+        await Axios.get(API)
+        .then((req) => {
+            this.initRealm(req);
         })
         .catch((err) => {
             console.log(err)
@@ -54,19 +70,16 @@ export default class HomeScreen extends Component{
                 (<SafeAreaView style={styles.container}>
                     <Text style={styles.weatherText}>{weatherData[0].main}</Text>
                     <Text style={styles.weatherDescription}>{weatherData[0].description}</Text>
+                    <Text style={styles.weatherDescription}>temp : {weatherData[0].temp}</Text>
+                    <Text style={styles.weatherDescription}>humidity: {weatherData[0].humidity}</Text>
                     <View style={styles.button}>
-                        {this.props.weahterStore.refreshTime? (                        
                         <Button 
                             title="refresh"
                             color="#fff"
                             onPress={() => {
                                 this.getWeatherData()
                             }}
-                        />):(                        
-                        <Button 
-                            title="refreshing..."
-                            color="#fff"
-                        />)}
+                        />
                 </View>
                 </SafeAreaView>)}
             </View>
@@ -87,6 +100,7 @@ const styles = StyleSheet.create({
     },
     weatherDescription: {
         fontSize: 14,
+        margin: 5
     },
     button: {
         width: 100,
