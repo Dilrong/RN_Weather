@@ -30,7 +30,6 @@ export default class HomeScreen extends Component{
 
     getWeatherData = async () => {
         this.props.weahterStore.changeToLoading(true)
-        this.props.weahterStore.changeToRefreshTime(false)
         await Axios.get(API)
         .then((req) => {
             realm.write(() => {
@@ -44,7 +43,7 @@ export default class HomeScreen extends Component{
         .catch((err) => {
             console.log(err)
         })
-        this.props.weahterStore.changeToLoading(false)
+        this.props.weahterStore.changeToLoading(false);
     }
 
     render(){
@@ -63,7 +62,11 @@ export default class HomeScreen extends Component{
                             onPress={() => {
                                 this.getWeatherData()
                             }}
-                        />):(<View/>)}
+                        />):(                        
+                        <Button 
+                            title="refreshing..."
+                            color="#fff"
+                        />)}
                 </View>
                 </SafeAreaView>)}
             </View>
