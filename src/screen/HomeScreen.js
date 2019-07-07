@@ -1,11 +1,9 @@
 import React, {Component} from 'react';
-import {StyleSheet, View, Text, Button, ActivityIndicator} from 'react-native';
-import {createStackNavigator, createAppContainer} from 'react-navigation';
+import {StyleSheet, View, Text, Button, ActivityIndicator, SafeAreaView} from 'react-native';
 import {inject, observer} from 'mobx-react';
 import Axios from 'axios';
 import API from '../api/api';
 import Realm from 'realm';
-import { isForInStatement } from '@babel/types';
 
 const realm = new Realm({
     schema: [{name: 'weather', 
@@ -19,18 +17,21 @@ const realm = new Realm({
 
 @inject('weahterStore')
 @observer
-class HomeScreen extends Component{
+export default class HomeScreen extends Component{
     constructor(props){
         super(props);
     }
 
     componentDidMount(){
-        getWeatherData();
+        if(!(realm.objects('weather').length)){
+            this.getWeatherData();
+        }
     }
 
-    getWeatherData(){
-        this.props.weahterStore.isLoading = true
-        Axios.get(API)
+    getWeatherData = async () => {
+        this.props.weahterStore.changeToLoading(true)
+        this.props.weahterStore.changeToRefreshTime(false)
+        await Axios.get(API)
         .then((req) => {
             realm.write(() => {
                 realm.create('weather', {
@@ -39,25 +40,32 @@ class HomeScreen extends Component{
                     description: req.data.weather[0].description,
                 },true);
             });
-            this.props.weahterStore.isLoading = false
         })
         .catch((err) => {
             console.log(err)
-            this.props.weahterStore.isLoading = false
         })
+        this.props.weahterStore.changeToLoading(false)
     }
 
     render(){
         let weatherData = realm.objects('weather');
         return (
             <View style={styles.container}>
-                {this.props.weahterStore.isLoading? (<ActivityIndicator style={styles.loader} size="large" color="#0000ff" />):(<View/>)}
-                <Text>Today is {weatherData[0].main}</Text>
-                <Text>{weatherData[0].description}</Text>
-                <Button 
-                    title="새로고침"
-                    onPress={this.getWeatherData()}
-                ></Button>
+                {this.props.weahterStore.isLoading? (<ActivityIndicator style={styles.loader} size="large" color="#e67e22" />):
+                (<SafeAreaView style={styles.container}>
+                    <Text style={styles.weatherText}>{weatherData[0].main}</Text>
+                    <Text style={styles.weatherDescription}>{weatherData[0].description}</Text>
+                    <View style={styles.button}>
+                        {this.props.weahterStore.refreshTime? (                        
+                        <Button 
+                            title="refresh"
+                            color="#fff"
+                            onPress={() => {
+                                this.getWeatherData()
+                            }}
+                        />):(<View/>)}
+                </View>
+                </SafeAreaView>)}
             </View>
         )
     }
@@ -67,23 +75,24 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'center'
+    },
+    weatherText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        margin: 10
+    },
+    weatherDescription: {
+        fontSize: 14,
+    },
+    button: {
+        width: 100,
+        borderRadius: 4,
+        backgroundColor: '#e67e22',
+        margin: 10
     },
     loader:{
         justifyContent: 'center',
         alignItems: 'center',
     }
 });
-
-const AppNavigator = createStackNavigator({
-    Home: {
-        screen: HomeScreen
-    }
-},
-{
-    initialRouteName: 'Home',
-    header: null,
-    headerMode: 'none'
-});
-
-export default createAppContainer(AppNavigator);
